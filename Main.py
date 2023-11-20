@@ -188,3 +188,63 @@ for i, column in enumerate(columns_imputed_median):
 plt.tight_layout()
 plt.show()
 
+
+#%% 4. Suavizado de los datos. 
+
+# Grid
+fig, axes = plt.subplots(nrows=len(columns_to_impute), ncols=3, figsize=(20, 5 * len(columns_to_impute)))
+
+
+for i, column in enumerate(columns_to_impute):
+    # Original
+    axes[i, 0].plot(df.index, df[f'{column}_imputed_mean_local'], label='Original', color='cornflowerblue')
+    axes[i, 0].set_title(f'Original - {column}')
+    axes[i, 0].set_xlabel('Fecha')
+    axes[i, 0].set_ylabel('Valor')
+    axes[i, 0].legend()
+
+    # Upsampling con suavizado Media Móvil
+    upsampled_mean = df[f'{column}_imputed_mean_local'].resample('D').mean()
+    upsampled_mean_smoothed = upsampled_mean.rolling(window=7).mean().interpolate()
+
+    axes[i, 1].plot(upsampled_mean_smoothed.index, upsampled_mean_smoothed, label='Upsampling + Media Móvil', color='lightseagreen')
+    axes[i, 1].set_title(f'Upsampling + Media Móvil - {column}')
+    axes[i, 1].set_xlabel('Fecha')
+    axes[i, 1].set_ylabel('Valor')
+    axes[i, 1].legend()
+
+    # Downsampling con suavizado exponencial
+    #downsampled_median_smoothed = df[f'{column}_imputed_median_local'].resample('M').median().interpolate(method='linear')
+    downsampled_median = df[f'{column}_imputed_median_local'].resample('M').median()
+    downsampled_median_smoothed = downsampled_median.ewm(span=4).mean().interpolate(method='linear')
+
+    axes[i, 2].plot(downsampled_median_smoothed.index, downsampled_median_smoothed, label='Downsampling + Suavizado Exponencial', color='darkviolet')
+    axes[i, 2].set_title(f'Downsampling + Suavizado Exponencial - {column}')
+    axes[i, 2].set_xlabel('Fecha')
+    axes[i, 2].set_ylabel('Valor')
+    axes[i, 2].legend()
+
+
+plt.tight_layout()
+plt.show()
+
+#%% 5. Estacionariedad. 
+from statsmodels.tsa.stattools import adfuller, kpss
+import warnings
+warnings.filterwarnings("ignore")
+
+def perform_tests(column):
+    print(f"\nResultados para la columna: {column}")
+    
+    # Prueba de Dickey-Fuller
+    result_adf = adfuller(df[column])
+    p_value_adf = result_adf[1]
+    print(f"P-valor de la prueba de Dickey-Fuller: {p_value_adf}")
+    
+    # Prueba KPSS
+    result_kpss = kpss(df[column])
+    p_value_kpss = result_kpss[1]
+    print(f"P-valor de la prueba KPSS: {p_value_kpss}")
+
+for col in columns_imputed_mean:
+    perform_tests(col)
